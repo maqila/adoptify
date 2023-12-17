@@ -3,17 +3,18 @@ import sqlalchemy
 import hashlib
 import os
 
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException
 from pydantic import BaseModel
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from db import connect_tcp_socket
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
-# from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-# from jose import JWTError, jwt
-# from passlib.context import CryptContext
-# from datetime import datetime, timedelta
+# Import kebutuhan Login
+from fastapi.security import OAuth2PasswordBearer
+from jose import jwt
+from passlib.context import CryptContext
+from datetime import datetime, timedelta
 
 # Load environment variables
 dotenv_path = "./.env"
@@ -23,6 +24,10 @@ load_dotenv(dotenv_path=dotenv_path)
 class User(BaseModel):
     username: str
     email: str
+    
+class UserLogin(BaseModel):
+    email: str
+    password: str
 
 class RegisterUser(BaseModel):
     username: str
@@ -30,12 +35,70 @@ class RegisterUser(BaseModel):
     password: str
     
 def generate_password_hash(password):
-    salt = os.urandom(32)
-    hashed_password = hashlib.sha256(password.encode() + salt).hexdigest()
-    return f"{hashed_password}:{salt.hex()}"
+    hashed_password = pwd_context.hash(password.encode())
+    return hashed_password
+
+SECRET_KEY = "maqila"  # Ganti dengan kunci rahasia yang kuat
+# Konfigurasi JWT
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 # Initialize FastAPI app
 app = FastAPI()
+
+# Konfigurasi otentikasi
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+# Konfigurasi password hashing
+pwd_context = CryptContext(schemes=["bcrypt", "sha256_crypt"], deprecated="auto")
+
+# Fungsi bantuan untuk membuat token
+def create_access_token(data: dict, expires_delta: timedelta or None = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+# Fungsi bantuan untuk mendapatkan user dari database berdasarkan username
+def get_user(db_session, email: str):
+    with db_session.connect() as conn:
+        try:
+            existing_user = conn.execute(
+                sqlalchemy.text(f'SELECT * FROM "user" WHERE "email" = \'{email}\';')
+            ).fetchone()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error: {e}")
+
+    return existing_user[3]
+
+# Fungsi bantuan untuk memverifikasi kata sandi
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+# Fungsi bantuan untuk mendapatkan sesi database
+def get_db():
+    db = connect_tcp_socket()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# Login API
+@app.post("/api/login")
+async def login_for_access_token(
+    user: UserLogin, db: Session = Depends(connect_tcp_socket)
+):
+    hashedPassUser = get_user(db, user.email)
+    if not user or not verify_password(user.password, hashedPassUser):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(data={"sub": user.email}, expires_delta=access_token_expires)
+    return {"access_token": access_token, "token_type": "bearer"}
 
 # Register API
 @app.post("/api/register")
@@ -82,6 +145,7 @@ async def register(user: RegisterUser, db: Session = Depends(connect_tcp_socket)
         },
     }
 
+#API Pet-recommendation
 @app.get("/api/pet-recommendations")
 async def pet_recommendations(petId: int, recomType: str):
     db = connect_tcp_socket()
@@ -182,13 +246,13 @@ async def pet_recommendations(petId: int, recomType: str):
     
     df_result = pd.DataFrame()
 
-    if recomType == "ALL":
+    if recomType.lower() == "all":
         df_result = mean_kesehatan_ras_recommendation(petId)
-    if recomType == "RAS":
+    if recomType.lower() == "ras":
         df_result = ras_hewan_recommendations(petId)
-    if recomType == "KESEHATAN":
+    if recomType.lower() == "kesehatan":
         df_result = kesehatan_hewan_recommendations(petId)
-    if recomType == "JENIS":
+    if recomType.lower() == "jenis":
         df_result = jenis_hewan_recommendations(petId)
         
 
@@ -196,4 +260,123 @@ async def pet_recommendations(petId: int, recomType: str):
         "status": 200,
         "msg": "Success Generate Recommendations",
         "data": df_result.to_dict("records"),
+    }
+    
+#API list pet
+@app.get("/api/pet")
+async def pet():
+    db = connect_tcp_socket()
+    with db.connect() as conn:
+        data = pd.read_sql(
+            sqlalchemy.text(
+                f"SELECT * FROM tbAdoptify"
+            ),
+            conn
+        )
+    return {
+        "status": 200,
+        "msg": "Success Generate Recommendations",
+        "data": data.to_dict('records'),
+    }
+    
+#API detail pet
+@app.get("/api/pet-detail")
+async def pet_detail(petId: int):
+    db = connect_tcp_socket()
+    with db.connect() as conn:
+        data = pd.read_sql(
+            sqlalchemy.text(
+                f"SELECT * FROM tbAdoptify WHERE uid = {petId}"
+            ),
+            conn
+        )
+    return {
+        "status": 200,
+        "msg": "Success Generate Recommendations",
+        "data": data.to_dict('records'),
+    }
+
+#API berdasarkan jenis
+@app.get("/api/pets-byType")
+async def pet_recommendations(petType: str):
+    db = connect_tcp_socket()
+    with db.connect() as conn:
+        data = pd.read_sql(
+            sqlalchemy.text(
+                f"SELECT * FROM tbAdoptify WHERE jenis = '{petType}'"
+            ),
+            conn
+        )
+    return {
+        "status": 200,
+        "msg": "Success Generate Recommendations",
+        "data": data.to_dict('records'),
+    }
+
+#API berdasarkan ras
+@app.get("/api/pets-byRas")
+async def pet_recommendations(petType: str):
+    db = connect_tcp_socket()
+    with db.connect() as conn:
+        data = pd.read_sql(
+            sqlalchemy.text(
+                f"SELECT * FROM tbAdoptify WHERE ras = '{petType}'"
+            ),
+            conn
+        )
+    return {
+        "status": 200,
+        "msg": "Success Generate Recommendations",
+        "data": data.to_dict('records'),
+    }
+
+#API berdasarkan kesehatan
+@app.get("/api/pets-byKesehatan")
+async def pet_recommendations(petType: str):
+    db = connect_tcp_socket()
+    with db.connect() as conn:
+        data = pd.read_sql(
+            sqlalchemy.text(
+                f"SELECT * FROM tbAdoptify WHERE kesehatan = '{petType}'"
+            ),
+            conn
+        )
+    return {
+        "status": 200,
+        "msg": "Success Generate Recommendations",
+        "data": data.to_dict('records'),
+    }
+    
+#API list Shelter
+@app.get("/api/shelter")
+async def shelter():
+    db = connect_tcp_socket()
+    with db.connect() as conn:
+        data = pd.read_sql(
+            sqlalchemy.text(
+                f"SELECT * FROM tbShelter"
+            ),
+            conn
+        )
+    return {
+        "status": 200,
+        "msg": "Success Generate Recommendations",
+        "data": data.to_dict('records'),
+    }
+    
+#API detail Shelter
+@app.get("/api/shelter-detail")
+async def shelter_recommendations(shelterId: int):
+    db = connect_tcp_socket()
+    with db.connect() as conn:
+        data = pd.read_sql(
+            sqlalchemy.text(
+                f"SELECT * FROM tbShelter WHERE uid = {shelterId}"
+            ),
+            conn
+        )
+    return {
+        "status": 200,
+        "msg": "Success Generate Recommendations",
+        "data": data.to_dict('records'),
     }

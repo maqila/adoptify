@@ -53,6 +53,7 @@ def connect_tcp_socket() -> sqlalchemy.engine.base.Engine:
 
     connect_args = {}
     if os.environ.get("DB_ROOT_CERT"):
+        connect_args = {}
         db_root_cert = os.environ["DB_ROOT_CERT"]
         db_cert = os.environ["DB_CERT"]  # e.g. '/path/to/my/client-cert.pem'
         db_key = os.environ["DB_KEY"]  # e.g. '/path/to/my/client-key.pem'

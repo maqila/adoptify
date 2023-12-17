@@ -8,7 +8,7 @@ if defined _OLD_CODEPAGE (
     "%SystemRoot%\System32\chcp.com" 65001 > nul
 )
 
-set VIRTUAL_ENV=D:\Bangkit 2023 - Cloud Computing\Capstone Project\adoptify\.venv
+set VIRTUAL_ENV=D:\Bangkit 2023 - Cloud Computing\Capstone Project\app\adoptify\.venv
 
 if not defined PROMPT set PROMPT=$P$G
 
