@@ -452,3 +452,21 @@ async def create_adopt(
         "kartuIdentitas_url": kartu_url,
         "buktiTransfer_url": bukti_url,
     }
+    
+#API list Abandoned
+@app.get("/api/abandoned")
+async def abandoned():
+    db = connect_unix_socket()
+    # db = connect_tcp_socket()
+    with db.connect() as conn:
+        data = pd.read_sql(
+            sqlalchemy.text(
+                f"SELECT * FROM tbAbandoned"
+            ),
+            conn
+        )
+    return {
+        "status": 200,
+        "msg": "Success Generate ALL Abandoned",
+        "data": data.to_dict('records'),
+    }
