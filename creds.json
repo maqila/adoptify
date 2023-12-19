@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "adoptify-407114",
+  "private_key_id": "337d4b201fc4ff33747690581e17c3b6feaed0dd",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQC1E6e40oofU7YQ\nVfwMNaz+q0XwMm40BD13v7BPjHB+GpTe9DeRLy2zalEBog7Sb+YcVFGyCaoU4d30\niteMSjjkOgtU4XOMymXWXYGe08oFNUiOvI4F62BSUz6zBBB1QklYHelSEfNWgxAG\n9+Yi0Z13pjXJT+UpgyFjgOziljVdVAzsK0mQvwezP3+lpl7WFF+Z9y9RbPmfa+A5\nF7W02f5iVFxWHnKWPxmsKqSi05VFORV4w3K9Y9B6S22TNFJ+qpN3SM/0C5IA1LM7\nKkjg8FG8INXFWuAv+AfdAfEKXxYW8+pwJu5a6Hkyea60rlKkspci3+Fw4rAxXvAN\nKiuA/yohAgMBAAECggEACzKOqSAjGKijD7CMuEgrc5YtnYE1pzOdH3lNn4wZbfSA\np0B/6fnHM2fMLM2T0BFjL/ZKe2sbxu3OvW9GjaJ095WogYe6W9PHGphh4+uVFXkq\nWWIXzQ4b2nHTMaiUyF0ggizBv5vKw45+rVRwH7Z839stF7VZzPusbJkagDD2VnG5\nuljNrgalBzRCuRK27VC7uWFoDSq2EpJyUQ5IDG2K0QIjRFwhRmPcR+wYkWsDrPAk\n1GWEpW+VRBAsPdfznlkMzgAIxEl1XqC31P645IcTKaSo26pZhNVCfdRHa+vcNrLu\n6Ku5K+4aEQYumRwIFvANq7C6+V9ka8tpqjdia/aVxwKBgQDp0pMszBrNY2DnaoIh\ny6X5iZEYLy71q1gv6DFhIhEpGRYltElfDhNg9HhJ4iIAvRHzMppXlXFpoSaJujSH\n8QDULEjmEqQe1Auw4rYBSwtNxXxIBpdLKoXYV675hrV758dcUqTbi2avT6SgDD/z\nqlWf4fB1/t9XoypjXNmfFb2mFwKBgQDGQF1VRRQ4hw9VS9wU9xkdB1Nykh78JZ5B\nFw6f82zqORgK7TEQuD09Y9FThoLODJH6VjvWxGe/lvX2X6xclA0jbf39M8EbTZoD\nz2iH/PyG8m2XYgu9WUIlHiXRURXRr6EJN2LKRYtAWWhgLssdLZVKwJqBajhlBPIm\ncYxL5xiMhwKBgQDl6YmPve4I0NQDGKZ2hqFf+dWyuwpoxB+Fk8GiKfZHvAQb9OdE\nUTna1ufEdldK9J5GzRYYUrjezXdwa6illuNivVy85c19BrGsL3AZW2n1Ad+PjvOL\nFHfhX26MqtmeySwtapHx0mOYtC5CtWjYtj9VY7umuoNvz9+pLi5KD/2X5wKBgQCt\nGfAkjv975/msaWNN7v8/iHEFXa6uTQ5kGQTNBpg33wguKjKoPaZDHw/cFVvLG9Cu\nO3NeL/nCoMY8jAcMgr0CDX0zA2h+NYDgCM5lxrCcB7tG7fYAK5qEnFE69cjOYMKE\nMJcStCxFUIvBR7pTzMRJE+kUTLHXCr2Aca6la6/UqwKBgQDERbE48Ikdir188i3t\nVOM5NoWAmgRwDIpb+qR86EJPEstPTO34CCGp66VGYLsQDiUjgdApAdYWYg60PL+p\nn2NoAHF+GF6w6j6J8JlrwJ0vYKU5yjM89yUS3OUKr131SCX/Uheykz0SuYaxdQ+K\nu9I51LaoFeh9GCUw/Gsy0T/jIQ==\n-----END PRIVATE KEY-----\n",
+  "client_email": "adoptify-storage@adoptify-407114.iam.gserviceaccount.com",
+  "client_id": "110928820090213107674",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/adoptify-storage%40adoptify-407114.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

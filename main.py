@@ -1,33 +1,36 @@
 import pandas as pd
 import sqlalchemy
+import uuid
 import hashlib
 import os
 
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Form
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from db import connect_unix_socket, connect_tcp_socket
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 from pathlib import Path
+from sqlalchemy import text
 # Import kebutuhan Login
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
+# Import Kebutuhan untuk upload to Cloud Storage
+from google.cloud import storage
 
 # Load environment variables
 dotenv_path = Path("./.env")
 load_dotenv(dotenv_path=dotenv_path)
 
 # Define models for register
-    
 def generate_password_hash(password):
     hashed_password = pwd_context.hash(password.encode())
     return hashed_password
 
-SECRET_KEY = "maqila"  # Ganti dengan kunci rahasia yang kuat
 # Konfigurasi JWT
+SECRET_KEY = "maqila"  # Ganti dengan kunci rahasia yang kuat
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -60,38 +63,80 @@ def get_user(db_session, email: str):
             ).fetchone()
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error: {e}")
-
     return existing_user[3]
 
 # Fungsi bantuan untuk memverifikasi kata sandi
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
-# Fungsi bantuan untuk mendapatkan sesi database
-def get_db():
+#Inisialisasi Bucket
+bucket_name = "adoptify-bucket"  # Ganti dengan nama bucket GCS Anda
+
+#Fungsi Upload to Bucket
+def upload_to_bucket(blob_name, file_content, bucket_name):
+    """Upload data to a Google Cloud Storage bucket."""
+    storage_client = storage.Client.from_service_account_json('creds.json')
+    bucket = storage_client.get_bucket(bucket_name)
+    blob = bucket.blob(blob_name)
+    blob.upload_from_file(file_content)
+    return blob.public_url
+
+#Fungsi membuat Filename baru
+def generate_new_filename(file, petId):
+    """Generate a new filename based on a specific format."""
+    file_extension = file.filename.split(".")[-1]  # Get the file extension
+    new_filename = f"{petId}_{str(uuid.uuid4())[:8]}.{file_extension}"  # Create a new filename using UUID
+    return new_filename
+
+#Fungsi Insert Data
+def insert_adoption_record(nama, email, alamat, prov, pos, kartuIdentitas, buktiTransfer, petId):
+    """Insert adoption record into PostgreSQL database."""
     db = connect_unix_socket()
     # db = connect_tcp_socket()
-    try:
-        yield db
-    finally:
-        db.close()
+    with db.connect() as conn:
+        query = text(
+            'INSERT INTO tbadopt (nama, email, alamat, provinsi, kodepos, ktp, tf, petid) '
+            'VALUES (:nama, :email, :alamat, :prov, :pos, :kartuIdentitas, :buktiTransfer, :petId)'
+        )
+        conn.execute(
+            query,
+            {
+                "nama": nama,
+                "email": email,
+                "alamat": alamat,
+                "prov": prov,
+                "pos": pos,
+                "kartuIdentitas": kartuIdentitas,
+                "buktiTransfer": buktiTransfer,
+                "petId": petId,
+            },
+        )
 
 # Login API
 @app.post("/api/login")
 async def login_for_access_token(
-    email: str,password: str, db: Session = Depends(connect_unix_socket) #connect_tcp_socket
+    email: str = Form(...),
+    password: str = Form(...),
+    db: Session = Depends(connect_unix_socket) #connect_tcp_socket
 ):
+    if not email or not password:
+        raise HTTPException(status_code=400, detail="Email and password are required")
     hashedPassUser = get_user(db, email)
     if not email or not verify_password(password, hashedPassUser):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(data={"sub": email}, expires_delta=access_token_expires)
-    return {"access_token": access_token, "token_type": "bearer"}
+    success_message = f"Successfully logged in as {email}"
+    return {"message": success_message, "access_token": access_token, "token_type": "bearer"}
 
 # Register API
 @app.post("/api/register")
-async def register(username: str,email: str,password:str, db: Session = Depends(connect_unix_socket)): #connect_tcp_socket
+async def register(username: str = Form(...),
+                   email: str = Form(...),
+                   password:str = Form(...),
+                   db: Session = Depends(connect_unix_socket)
+                ): #connect_tcp_socket
     # Check if username and email are provided
     if not username or not email:
         raise HTTPException(status_code=400, detail="Missing username or email")
@@ -127,7 +172,7 @@ async def register(username: str,email: str,password:str, db: Session = Depends(
 
     return {
         "status": 201,
-        "msg": "Successfully registered",
+        "msg": "Successfully Registered",
         "data": {
             "username": username,
             "email": email,
@@ -146,7 +191,7 @@ async def pet_recommendations(petId: int, recomType: str):
             ),
             conn
         )
-    print(data.keys())
+    # print(data.keys())
     
     data["kontak"] = data["kontak"].str.replace("'", "")
     # data.rename(columns={"ID": "UID"}, inplace=True)
@@ -158,14 +203,13 @@ async def pet_recommendations(petId: int, recomType: str):
 
     tfidf_matrix_ras = tf.fit_transform(data["ras"])
 
-
     cosine_sim_ras = cosine_similarity(tfidf_matrix_ras)
-    #     cosine_sim_ras
+    #cosine_sim_ras
 
     cosine_sim_df_ras = pd.DataFrame(
         cosine_sim_ras, index=data["uid"], columns=data["uid"]
     )
-    print(cosine_sim_df_ras)
+    # print(cosine_sim_df_ras)
 
 
     def ras_hewan_recommendations(
@@ -242,9 +286,6 @@ async def pet_recommendations(petId: int, recomType: str):
         df_result = ras_hewan_recommendations(petId)
     if recomType.lower() == "kesehatan":
         df_result = kesehatan_hewan_recommendations(petId)
-    if recomType.lower() == "jenis":
-        df_result = jenis_hewan_recommendations(petId)
-        
 
     return {
         "status": 200,
@@ -284,7 +325,7 @@ async def pet_detail(petId: int):
         )
     return {
         "status": 200,
-        "msg": "Success Generate Recommendations",
+        "msg": "Success Generate Detail Pet",
         "data": data.to_dict('records'),
     }
 
@@ -356,7 +397,7 @@ async def shelter():
         )
     return {
         "status": 200,
-        "msg": "Success Generate Recommendations",
+        "msg": "Success Generate ALL Shelter",
         "data": data.to_dict('records'),
     }
     
@@ -374,6 +415,40 @@ async def shelter_recommendations(shelterId: int):
         )
     return {
         "status": 200,
-        "msg": "Success Generate Recommendations",
+        "msg": "Success Generate Detail Shelter",
         "data": data.to_dict('records'),
+    }
+    
+#API adopt
+@app.post("/api/adopt")
+async def create_adopt(
+    nama: str = Form(...),
+    email: str = Form(...),
+    alamat: str = Form(...),
+    prov: str = Form(...),
+    pos: str = Form(...),
+    kartuIdentitas: UploadFile = File(...),
+    buktiTransfer: UploadFile = File(...),
+    petId: int = Form(...),
+):
+    # Validasi tipe file
+    if not (kartuIdentitas.content_type.startswith("image/") and buktiTransfer.content_type.startswith("image/")):
+        raise HTTPException(status_code=400, detail="Hanya gambar yang diperbolehkan.")
+
+    # Generate new filenames
+    new_kartu_filename = generate_new_filename(kartuIdentitas, petId)
+    new_bukti_filename = generate_new_filename(buktiTransfer, petId)
+
+    # Melakukan penyisipan ke database dan unggahan file
+    insert_adoption_record(nama, email, alamat, prov, pos, new_kartu_filename, new_bukti_filename, petId)
+
+    # Unggah file ke Google Cloud Storage dengan nama baru
+    kartu_url = upload_to_bucket(f"adopt/{new_kartu_filename}", kartuIdentitas.file, bucket_name)
+    bukti_url = upload_to_bucket(f"adopt/{new_bukti_filename}", buktiTransfer.file, bucket_name)
+
+    return {
+        "status": 200,
+        "msg": "Pengadopsian berhasil",
+        "kartuIdentitas_url": kartu_url,
+        "buktiTransfer_url": bukti_url,
     }
