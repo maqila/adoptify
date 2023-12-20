@@ -94,23 +94,28 @@ def insert_adoption_record(nama, email, alamat, prov, pos, kartuIdentitas, bukti
     db = connect_unix_socket()
     # db = connect_tcp_socket()
     with db.connect() as conn:
-        query = text(
-            'INSERT INTO tbadopt (nama, email, alamat, provinsi, kodepos, ktp, tf, petid) '
-            'VALUES (:nama, :email, :alamat, :prov, :pos, :kartuIdentitas, :buktiTransfer, :petId)'
-        )
-        conn.execute(
-            query,
-            {
-                "nama": nama,
-                "email": email,
-                "alamat": alamat,
-                "prov": prov,
-                "pos": pos,
-                "kartuIdentitas": kartuIdentitas,
-                "buktiTransfer": buktiTransfer,
-                "petId": petId,
-            },
-        )
+        try:
+            query = text(
+                'INSERT INTO tbAdopt (nama, email, alamat, provinsi, kodepos, ktp, tf, petid) '
+                'VALUES (:nama, :email, :alamat, :prov, :pos, :kartuIdentitas, :buktiTransfer, :petId)'
+            )
+            conn.execute(
+                query,
+                {
+                    "nama": nama,
+                    "email": email,
+                    "alamat": alamat,
+                    "prov": prov,
+                    "pos": pos,
+                    "kartuIdentitas": kartuIdentitas,
+                    "buktiTransfer": buktiTransfer,
+                    "petId": petId,
+                },
+            )
+            conn.commit()
+        except Exception as e:
+            conn.rollback()  # Rollback transaksi jika ada kesalahan
+            raise e
 
 # Login API
 @app.post("/api/login")
@@ -403,7 +408,7 @@ async def shelter():
     
 #API detail Shelter
 @app.get("/api/shelter-detail")
-async def shelter_recommendations(shelterId: int):
+async def shelter_detail(shelterId: int):
     db = connect_unix_socket()
     # db = connect_tcp_socket()
     with db.connect() as conn:
@@ -451,6 +456,24 @@ async def create_adopt(
         "msg": "Pengadopsian berhasil",
         "kartuIdentitas_url": kartu_url,
         "buktiTransfer_url": bukti_url,
+    }
+    
+#API detail Adoption
+@app.get("/api/adopt-detail")
+async def adopt_detail(adoptId: int):
+    db = connect_unix_socket()
+    # db = connect_tcp_socket()
+    with db.connect() as conn:
+        data = pd.read_sql(
+            sqlalchemy.text(
+                f"SELECT * FROM tbAdopt WHERE id = {adoptId}"
+            ),
+            conn
+        )
+    return {
+        "status": 200,
+        "msg": "Success Generate Detail Adoption",
+        "data": data.to_dict('records'),
     }
     
 #API list Abandoned
