@@ -457,6 +457,24 @@ async def create_adopt(
         "kartuIdentitas_url": kartu_url,
         "buktiTransfer_url": bukti_url,
     }
+
+#API Adoption
+@app.get("/api/adopt")
+async def adopt():
+    db = connect_unix_socket()
+    # db = connect_tcp_socket()
+    with db.connect() as conn:
+        data = pd.read_sql(
+            sqlalchemy.text(
+                f"SELECT * FROM tbAdopt"
+            ),
+            conn
+        )
+    return {
+        "status": 200,
+        "msg": "Success Generate Detail Adoption",
+        "data": data.to_dict('records'),
+    }
     
 #API detail Adoption
 @app.get("/api/adopt-detail")
